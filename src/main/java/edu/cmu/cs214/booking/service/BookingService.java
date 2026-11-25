@@ -6,7 +6,9 @@ import edu.cmu.cs214.booking.domain.TimeInterval;
 import edu.cmu.cs214.booking.domain.User;
 import edu.cmu.cs214.booking.domain.WaitlistEntry;
 import edu.cmu.cs214.booking.repo.BookingStore;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Coordinates bookings and the waitlist. Enforces the core invariant: a room
@@ -40,6 +42,39 @@ public class BookingService {
         Booking booking = new Booking("b" + nextBookingSeq++, room, user, interval);
         store.addBooking(booking);
         return new BookingResult.Confirmed(booking);
+    }
+
+    /**
+     * Cancels the confirmed booking with {@code bookingId}, if it exists, freeing
+     * its slot. At most one waiter is then promoted from the room's waitlist: the
+     * earliest waiter (by {@code seq}) whose interval does not overlap any
+     * remaining confirmed booking. Waiters whose intervals still conflict are
+     * skipped. If no booking has that id, nothing changes.
+     */
+    public void cancelBooking(String bookingId) {
+        Optional<Booking> found = store.findBooking(bookingId);
+        if (found.isEmpty()) {
+            return;
+        }
+        Booking cancelled = found.get();
+        Room room = cancelled.room();
+        store.removeBooking(bookingId);
+
+        List<Booking> remaining = store.bookingsForRoom(room);
+        List<WaitlistEntry> waitlist = store.waitlistForRoom(room).stream()
+            .sorted(Comparator.comparingInt(WaitlistEntry::seq))
+            .toList();
+        for (WaitlistEntry entry : waitlist) {
+            boolean conflicts = remaining.stream()
+                .anyMatch(b -> b.interval().overlaps(entry.interval()));
+            if (!conflicts) {
+                Booking promoted = new Booking(
+                    "b" + nextBookingSeq++, room, entry.user(), entry.interval());
+                store.addBooking(promoted);
+                store.removeWaitlistEntry(entry.id());
+                return;
+            }
+        }
     }
 
     /** Returns the confirmed bookings for {@code room}. */

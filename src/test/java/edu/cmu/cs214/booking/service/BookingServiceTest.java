@@ -2,7 +2,9 @@ package edu.cmu.cs214.booking.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
+import edu.cmu.cs214.booking.domain.Booking;
 import edu.cmu.cs214.booking.domain.Room;
 import edu.cmu.cs214.booking.domain.TimeInterval;
 import edu.cmu.cs214.booking.domain.User;
@@ -57,5 +59,26 @@ class BookingServiceTest {
         svc.book(roomA, alice, new TimeInterval(600, 660));
         svc.book(roomA, bob, new TimeInterval(660, 720));
         assertEquals(2, svc.listBookings(roomA).size());
+    }
+
+    @Test
+    void promoteWaitlistedUserWhenBookingIsCancelled() {
+        InMemoryBookingStore store = new InMemoryBookingStore();
+        BookingService svc = new BookingService(store);
+
+        BookingResult aliceResult = svc.book(roomA, alice, new TimeInterval(60, 200));
+        Booking aliceBooking = ((BookingResult.Confirmed) aliceResult).booking();
+
+        BookingResult bobResult = svc.book(roomA, bob, new TimeInterval(60, 200));
+        assertInstanceOf(BookingResult.Waitlisted.class, bobResult);
+
+        svc.cancelBooking(aliceBooking.id());
+
+        assertEquals(1, svc.listBookings(roomA).size());
+        Booking promoted = svc.listBookings(roomA).getFirst();
+        assertEquals(bob, promoted.user());
+        assertEquals(new TimeInterval(60, 200), promoted.interval());
+        assertNotEquals(aliceBooking.id(), promoted.id());
+        assertEquals(0, store.waitlistForRoom(roomA).size());
     }
 }
