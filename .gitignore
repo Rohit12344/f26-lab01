@@ -12,3 +12,6 @@ transcripts/
 .settings/
 .classpath
 .project
+
+#Text files
+/*.txt
