@@ -1,0 +1,9 @@
+1. Root cause: Wrong method implementation inside the file : src\main\java\edu\cmu\cs214\booking\repo\InMemoryBookingStore.java, line number 29.
+
+Since the comment inside the method "bookingsForRoom" states that "The bookings held for a single room" but the method "bookingsForRoom" was not actually returning the list of bookings for a single room. The original code for the method returned all confirmed bookings across all rooms.
+
+Leveraging the streams of functional programming, I correctly implemented the bookingsForRoom to return the list of bookings for the room passed in the parameter so that the loop inside "book" method/member function of BookingService class correctly iterates over the actual bookings for the respective rooms.
+
+Coming to why our test failed, it was because the loop was iterating over all the bookings of every room instead of the room where we want to actually book. The error was in line number 29 in the "InMemoryBookingStore.java" file inside the "bookingsForRoom" function. With the correct implementation of "bookingsForRoom" function, the loop ran over the bookings on the concerned room.
+
+I gave the exact file where the test case was failing and the error trace stack in the prompt and the AI explained the problem and gave a solution to me to correctly implement the "bookingsForRoom" function to return the list of bookings for a room only. Earlier, it was returning the bookings from all the rooms. After applying the solution and checking whether all the test cases passed using "mvn test", all the test cases passes now. The invariant does hold up even with the new changes in the codebase.
